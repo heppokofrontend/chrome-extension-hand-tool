@@ -133,7 +133,10 @@ label input:not(:checked) + span::after {
 }
 
 label input:focus-visible + span::after {
-  box-shadow: 0 0 3px rgb(0 0 0 / 60%) inset, 0 0 0 4px #e1e1e1, 0 0 0 6px var(--color-outline);
+  box-shadow:
+    0 0 3px rgb(0 0 0 / 60%) inset,
+    0 0 0 4px #e1e1e1,
+    0 0 0 6px var(--color-outline);
 }
 
 .hint {
@@ -199,7 +202,9 @@ label input:focus-visible + span::after {
   height: 32px;
   background: #42ccc0;
   border-radius: 20px;
-  box-shadow: 0 0 3px rgb(0 0 0 / 60%) inset, 0 0 0 4px var(--color-checkbox-border);
+  box-shadow:
+    0 0 3px rgb(0 0 0 / 60%) inset,
+    0 0 0 4px var(--color-checkbox-border);
 }
 
 [data-state='loaded'] .label::after {
@@ -243,7 +248,9 @@ label input:focus-visible + span::after {
   padding: 20px 0 0;
 }
 [data-state='loaded'] .options + .custom > div {
-  transition: 0.3s margin-top ease-out, 0.3s visibility ease-out;
+  transition:
+    0.3s margin-top ease-out,
+    0.3s visibility ease-out;
 }
 
 .options:has(input:checked) + .custom > div {

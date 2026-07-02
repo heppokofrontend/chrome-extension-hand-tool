@@ -1,6 +1,6 @@
 # Hand Tool for browser
 
-[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE) [![Maintainability](https://api.codeclimate.com/v1/badges/f8f4d5511be782db7c50/maintainability)](https://codeclimate.com/github/heppokofrontend/chrome-extension-hand-tool/maintainability)
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
 It is what we call hand-tool.
 
@@ -21,12 +21,12 @@ Install it on your Google Chrome from here.
 1. Press the `Space` key
 2. Mouse dragging on scrollable area
 
-\* You can change functional key if you click on the icon of this browser extension.
+\* You can change the trigger key from the popup that opens when you click the extension icon.
 
-| Icon                              | Press Key to be draggable         | Press key to scroll                                                   |
-| :-------------------------------- | :-------------------------------- | :-------------------------------------------------------------------- |
-| ![](./package/icon.png)           | Only `Space` (default)            | Down: `Ctrl`(`cmd`) + `Space`<br>Up:`Shift` + `Ctrl`(`cmd`) + `Space` |
-| ![](./package/icon--disabled.png) | `Shift` + `Ctrl`(`cmd`) + `Space` | Down: `Space` <br>`Shift` + `Space`                                   |
+| "Use the space key only" | Press key to be draggable         | Press key to scroll                                               |
+| :----------------------- | :-------------------------------- | :---------------------------------------------------------------- |
+| ON (default)             | `Space`                           | Tap `Space` (down) / Tap `Shift` + `Space` (up), without dragging |
+| OFF                      | `Shift` + `Ctrl`(`cmd`) + `Space` | Down: `Space`<br>Up: `Shift` + `Space`                            |
 
 ### Sample video
 
