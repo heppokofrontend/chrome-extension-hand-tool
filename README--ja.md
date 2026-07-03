@@ -1,6 +1,6 @@
 # スペースキーとドラッグでスクロールできるようになるやつ
 
-[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE) [![Maintainability](https://api.codeclimate.com/v1/badges/f8f4d5511be782db7c50/maintainability)](https://codeclimate.com/github/heppokofrontend/chrome-extension-hand-tool/maintainability)
+[![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
 いわゆる手のひらツールです。
 
@@ -8,11 +8,11 @@
 
 写真加工アプリや、イラスト制作アプリのように、スペースキーを押下中はドラッグでスクロールができるようになります。
 
-PC で横スクロールが必要な時、とくに便利です。
+PCで横スクロールが必要な時、とくに便利です。
 
 ## Download
 
-Google Chrome にインストールしてください。
+Google Chromeにインストールしてください。
 
 [![Available in the Chrome Web Store](./images/iNEddTyWiMfLSwFD6qGq.png)](https://chrome.google.com/webstore/detail/pjoggomlkaanadbegagokiioonfaedle)
 
@@ -21,12 +21,12 @@ Google Chrome にインストールしてください。
 1. スペースキーを押下します
 2. スクロール可能な領域でドラッグします
 
-※ このブラウザ拡張のアイコンをクリックするとアイコンが変わり、必要なキーの種類を切り替えられます。
+※ このブラウザ拡張のアイコンをクリックすると開くポップアップから、トリガーキーの種類を切り替えられます。
 
-| Icon                              | Press Key to be draggable         | Press key to scroll                                                   |
-| :-------------------------------- | :-------------------------------- | :-------------------------------------------------------------------- |
-| ![](./package/icon.png)           | Only `Space` (default)            | Down: `Ctrl`(`cmd`) + `Space`<br>Up:`Shift` + `Ctrl`(`cmd`) + `Space` |
-| ![](./package/icon--disabled.png) | `Shift` + `Ctrl`(`cmd`) + `Space` | Down: `Space` <br>`Shift` + `Space`                                   |
+| 「スペースキーだけを利用する」 | ドラッグ開始のキー                | スクロールのキー                                             |
+| :----------------------------- | :-------------------------------- | :----------------------------------------------------------- |
+| ON（デフォルト）               | `Space`                           | ドラッグせず`Space`を離す（下）/ `Shift`+`Space`を離す（上） |
+| OFF                            | `Shift` + `Ctrl`(`cmd`) + `Space` | Down: `Space`<br>Up: `Shift` + `Space`                       |
 
 ### サンプル動画
 

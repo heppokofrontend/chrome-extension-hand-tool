@@ -9,19 +9,16 @@
     "message": "Use the space key only"
   },
   "desc_space": {
-    "message": "Pressing Ctrl (Windows) or Command (macOS) and the space key together will scroll."
+    "message": "Releasing Space without dragging scrolls the page down."
   },
   "checkbox_shift": {
     "message": "Shift key"
-  },
-  "desc_shift": {
-    "message": "Start by pressing the custom key while holding down Shift."
   },
   "checkbox_ctrl": {
     "message": "Ctrl / Command key"
   },
   "desc_ctrl": {
-    "message": "Start by pressing the custom key while holding down Ctrl (Windows) or Command (macOS)."
+    "message": "Use Ctrl on Windows, or Command on macOS."
   },
   "label_key": {
     "message": "Click to edit the custom key"

@@ -1,42 +1,53 @@
 {
   "name": "chrome-extension-hand-tool",
   "description": "This is an extension for Google Chrome that enables you to scroll by holding down the spacebar and dragging the mouse.",
-  "version": "1.0.3",
+  "version": "1.3.0",
   "author": "heppokofrontend",
+  "allowScripts": {
+    "esbuild@0.28.1": true
+  },
   "bugs": {
     "url": "https://github.com/heppokofrontend/chrome-extension-hand-tool/issues"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.220",
-    "@typescript-eslint/eslint-plugin": "^4.28.2",
-    "@typescript-eslint/parser": "^4.28.2",
-    "eslint": "^7.30.0",
-    "eslint-config-google": "^0.14.0",
-    "gh-pages": "^3.2.3",
-    "http-server": "^14.1.1",
-    "terser": "^5.7.1",
-    "ts-loader": "^9.2.3",
-    "typescript": "^4.3.5",
-    "uglify-js": "^3.17.4"
+    "@eslint/js": "10.0.1",
+    "@types/chrome": "0.2.0",
+    "@vitest/coverage-v8": "4.1.9",
+    "esbuild": "0.28.1",
+    "eslint": "10.6.0",
+    "eslint-config-prettier": "10.1.8",
+    "gh-pages": "6.2.0",
+    "globals": "17.7.0",
+    "http-server": "14.1.1",
+    "jsdom": "29.1.1",
+    "prettier": "3.9.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.62.0",
+    "vitest": "4.1.9"
   },
   "homepage": "https://github.com/heppokofrontend/chrome-extension-hand-tool#readme",
   "keywords": [],
   "license": "MIT",
-  "main": "index.js",
+  "packageManager": "npm@11.17.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/heppokofrontend/chrome-extension-hand-tool.git"
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "npm run typecheck && npm run build:content && npm run build:popup",
+    "build:content": "esbuild src/content-scripts.ts --bundle --minify --format=iife --target=chrome120 --outfile=package/content-scripts.js",
+    "build:popup": "esbuild src/popup.ts --bundle --minify --format=iife --target=chrome120 --outfile=package/popup.js",
     "deploy": "gh-pages -d package -b package",
-    "dev": "tsc --watch",
-    "eslint": "eslint . --ext .js,.ts --fix",
-    "minify:content": "uglifyjs ./package/content-scripts.js -o ./package/content-scripts.js",
-    "minify:popup": "uglifyjs ./package/popup.js -o ./package/popup.js",
-    "postbuild": "yarn minify:content && yarn minify:popup",
-    "predeploy": "yarn build",
+    "dev:content": "esbuild src/content-scripts.ts --bundle --format=iife --target=chrome120 --sourcemap=inline --outfile=package/content-scripts.js --watch",
+    "dev:popup": "esbuild src/popup.ts --bundle --format=iife --target=chrome120 --sourcemap=inline --outfile=package/popup.js --watch",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "predeploy": "npm run build",
     "serve": "http-server ./ -o index.html",
-    "start": "yarn dev"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   }
 }

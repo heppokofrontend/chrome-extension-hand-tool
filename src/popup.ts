@@ -1,49 +1,32 @@
-const defaultSaveData = {
-  isUseOnlySpace: true,
-  customKeyPattern: '',
-  shiftKey: true,
-  ctrlKey: true,
-};
+import { type SaveDataType, defaultSaveData } from './constants';
+import { isValidOptionType, parseSaveData } from './utils/save-data';
 
-const STATE = {
-  saveData: defaultSaveData,
-};
+const STATE = { saveData: { ...defaultSaveData } };
 
 const getMessage = (key: string) => chrome.i18n.getMessage(key) || key;
-const isValidOptionType = (value: unknown): value is keyof SaveDataType => {
-  if (typeof value !== 'string') {
-    return false;
-  }
-
-  return value in defaultSaveData;
-};
 
 const checkboxes = document.querySelectorAll<HTMLInputElement>('[type="checkbox"]');
-const editCustomKeyField = document.getElementById('field')!;
-const save = (newSaveData: SaveDataType) => {
-  const value = {
-    ...STATE.saveData,
-    ...newSaveData,
-  };
+const editCustomKeyField = document.getElementById('field');
+if (!editCustomKeyField) {
+  throw new Error('#field element not found in popup');
+}
 
+const save = (patch: Partial<SaveDataType>) => {
+  const value: SaveDataType = { ...STATE.saveData, ...patch };
   STATE.saveData = value;
 
   for (const checkbox of checkboxes) {
-    if (isValidOptionType(checkbox.dataset.optionType)) {
-      const currentValue = value[checkbox.dataset.optionType];
-
+    if (isValidOptionType(checkbox.dataset['optionType'])) {
+      const currentValue = value[checkbox.dataset['optionType']];
       if (typeof currentValue === 'string') {
         checkbox.value = currentValue;
       } else {
-        checkbox.checked = currentValue ?? false;
+        checkbox.checked = currentValue;
       }
     }
   }
 
-  chrome.storage.local.set({
-    saveData: value,
-  });
-
+  void chrome.storage.local.set({ saveData: value });
   return value;
 };
 
@@ -51,13 +34,12 @@ const setLanguage = () => {
   const targets = document.querySelectorAll<HTMLElement>('[data-i18n]');
 
   for (const elm of targets) {
-    const { i18n } = elm.dataset;
-
-    if (!i18n) {
+    const key = elm.dataset['i18n'];
+    if (key === undefined || key === '') {
       continue;
     }
 
-    const textContent = getMessage(i18n);
+    const textContent = getMessage(key);
 
     if (elm.tagName.toLocaleLowerCase() === 'h1') {
       elm.textContent = textContent.split('※').slice(0, 1).join(''); // JPタイトルに注釈テキストを表示しない
@@ -68,49 +50,33 @@ const setLanguage = () => {
 };
 
 const loadSaveData = async () => {
-  const getValue = <T>(key: string, callback: (items: Record<string, T | undefined>) => void) =>
-    new Promise<void>((resolve) => {
-      chrome.storage.local.get(key, (items) => {
-        callback(items);
-        resolve();
-      });
-    });
+  const items = await chrome.storage.local.get('saveData');
+  const saveData = parseSaveData(items['saveData']);
+  STATE.saveData = saveData;
 
-  return Promise.all([
-    getValue<typeof defaultSaveData>('saveData', ({ saveData }) => {
-      for (const [key, value] of Object.entries<boolean | string>(saveData ?? defaultSaveData)) {
-        const checkbox = document.querySelector<HTMLInputElement>(`[data-option-type=${key}]`);
-
-        console.log(key);
-
-        if (typeof value === 'boolean' && checkbox) {
-          checkbox.checked = value;
-        }
-      }
-
-      STATE.saveData = saveData ?? defaultSaveData;
-    }),
-  ]);
+  for (const [key, value] of Object.entries(saveData)) {
+    const checkbox = document.querySelector<HTMLInputElement>(`[data-option-type="${key}"]`);
+    if (typeof value === 'boolean' && checkbox) {
+      checkbox.checked = value;
+    }
+  }
 };
 
-const writeCustomKey = (state: SaveDataType) => {
-  const key = state.customKeyPattern === ' ' ? '[Space]' : state.customKeyPattern;
-  const keyes = [
-    key,
-    state.shiftKey ? '[Shift]' : '',
-    state.ctrlKey ? '[Ctrl / Command]' : '',
-  ].filter(Boolean);
+const writeCustomKey = (data: SaveDataType) => {
+  const key = data.customKeyPattern === ' ' ? '[Space]' : data.customKeyPattern;
+  const keys = [key, data.ctrlKey ? '[Ctrl / Command]' : '', data.shiftKey ? '[Shift]' : ''].filter(
+    Boolean,
+  );
 
-  editCustomKeyField.textContent = keyes.join(' + ');
+  editCustomKeyField.textContent = keys.join(' + ');
 };
+
 const addEvent = () => {
   for (const checkbox of checkboxes) {
     checkbox.addEventListener('change', () => {
-      if (isValidOptionType(checkbox.dataset.optionType)) {
-        const result = save({
-          [checkbox.dataset.optionType]: checkbox.checked,
-        });
-
+      const optionType = checkbox.dataset['optionType'];
+      if (isValidOptionType(optionType)) {
+        const result = save({ [optionType]: checkbox.checked });
         writeCustomKey(result);
       }
     });
@@ -119,12 +85,20 @@ const addEvent = () => {
   let isEditing = false;
   const editCustomKeyOnClick = () => {
     isEditing = true;
-    editCustomKeyField.textContent = chrome.i18n.getMessage('editing');
+    editCustomKeyField.textContent = getMessage('editing');
   };
 
   editCustomKeyField.addEventListener('blur', () => {
     isEditing = false;
     writeCustomKey(STATE.saveData);
+  });
+  editCustomKeyField.addEventListener('keydown', (e) => {
+    if (isEditing && e.key === 'Escape') {
+      e.stopPropagation();
+      e.preventDefault();
+      isEditing = false;
+      writeCustomKey(STATE.saveData);
+    }
   });
   editCustomKeyField.addEventListener('keypress', (e) => {
     if (isEditing) {
@@ -132,29 +106,25 @@ const addEvent = () => {
       e.preventDefault();
       isEditing = false;
 
-      const state = save({
-        customKeyPattern: e.key,
-      });
-      writeCustomKey(state);
-
+      const next = save({ customKeyPattern: e.key });
+      writeCustomKey(next);
       return;
     }
 
-    if (e.key === 'Enter' && e.currentTarget instanceof HTMLElement) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.currentTarget instanceof HTMLElement) {
       e.preventDefault();
       e.currentTarget.click();
     }
   });
-  editCustomKeyField?.addEventListener('click', editCustomKeyOnClick);
+  editCustomKeyField.addEventListener('click', editCustomKeyOnClick);
 };
 
 setLanguage();
-loadSaveData().then(() => {
+void loadSaveData().then(() => {
   writeCustomKey(STATE.saveData);
   addEvent();
 });
 
-// CSS Transitionの有効化
 setTimeout(() => {
-  document.body.dataset.state = 'loaded';
+  document.body.dataset['state'] = 'loaded';
 }, 300);

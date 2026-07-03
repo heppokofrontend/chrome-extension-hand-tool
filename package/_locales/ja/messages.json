@@ -9,19 +9,16 @@
     "message": "スペースキーだけを利用する"
   },
   "desc_space": {
-    "message": "WindowsではCtrl、macOSではcommandキーを押しながらスペースキーを押下するとスクロールを実施します。"
+    "message": "ドラッグせずにSpaceを離すとページスクロールします。"
   },
   "checkbox_shift": {
     "message": "Shiftキー"
-  },
-  "desc_shift": {
-    "message": "Shiftキーを押しながらカスタムキーを押すと起動します"
   },
   "checkbox_ctrl": {
     "message": "Ctrl / commandキー"
   },
   "desc_ctrl": {
-    "message": "WindowsではCtrl、macOSではcommandキーを押しながらカスタムキーを押すと起動します"
+    "message": "WindowsではCtrl、macOSではcommandキーを利用します"
   },
   "label_key": {
     "message": "クリックしてカスタムキーを編集する"

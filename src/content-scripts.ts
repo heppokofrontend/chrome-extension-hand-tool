@@ -1,67 +1,72 @@
-const state: {
-  isUseOnlySpace: Boolean;
-  customKeyPattern: string;
-  shiftKey: boolean;
-  ctrlKey: boolean;
-  target: EventTarget | null;
-  x: number;
-  y: number;
-  startX: number;
-  startY: number;
-  scrollableX: Boolean;
-  scrollableY: Boolean;
-  pressSpace: Boolean;
-  pressMouse: Boolean;
-} = {
-  /** Spaceキーのみか、またはCtrl+Shift+Spaceか */
-  isUseOnlySpace: false,
-  customKeyPattern: '',
-  shiftKey: true,
-  ctrlKey: true,
+import { type SaveDataType, defaultSaveData, TAP_RELEASE_THRESHOLD_MS } from './constants';
+import { parseSaveData } from './utils/save-data';
+import {
+  canScrollBy,
+  getPageScrollAmount,
+  isScrollableHorizon,
+  isScrollableVertical,
+  smoothScrollBy,
+} from './utils/scroll';
 
-  /** スクロール対象ノード、あるいはwindow */
-  target: window,
-  /** Y軸方向ドラッグ開始位置 */
+const state = {
+  isUseOnlySpace: defaultSaveData.isUseOnlySpace,
+  customKeyPattern: defaultSaveData.customKeyPattern,
+  shiftKey: defaultSaveData.shiftKey,
+  ctrlKey: defaultSaveData.ctrlKey,
+
+  target: window as EventTarget | null,
   x: 0,
-  /** X軸方向ドラッグ開始位置 */
   y: 0,
-  /** X軸方向スクロール開始位置 */
   startX: 0,
-  /** Y軸方向スクロール開始位置 */
   startY: 0,
-  /** X軸方向スクロール可能 */
   scrollableX: false,
-  /** Y軸方向スクロール可能 */
   scrollableY: false,
-  /** スペースキーが押されているか */
   pressSpace: false,
-  /** マウスボタンが押されているか */
   pressMouse: false,
+  didDrag: false,
+  spacePressedAt: 0,
 };
+
 const run = () => {
-  /** 手のひらツール利用時にカーソルを変化させるためのスタイルを実現するためのstyle要素 */
   const styleElement = (() => {
     const element = document.createElement('style');
-
     element.textContent = '* {cursor: move !important;}';
-    element.dataset.from = 'chrome-extenstion';
-
+    element.dataset['from'] = 'chrome-extension';
     return element;
   })();
-  /** ドラッグ終了時にクリックイベントやmouseupイベントが既存の要素で発火するのを防ぐための要素 */
+
+  // dragScreen は Popover API の top layer に載せることで dialog.showModal() の
+  // 上に来れるようにしとる。popover 属性が付いた要素は :popover-open 状態のときのみ
+  // 描画される。
   const dragScreen = (() => {
     const element = document.createElement('heppokofrontend-handtool');
-
+    element.setAttribute('popover', 'manual');
     element.style.cssText = `
       position: fixed !important;
       inset: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      background: transparent !important;
+      border: 0 !important;
       z-index: 2147483647 !important;
     `;
-    // background: rgba(0,0,0,0.2)
-    element.dataset.from = 'chrome-extenstion';
-
+    element.dataset['from'] = 'chrome-extension';
     return element;
   })();
+  document.body.append(dragScreen);
+
+  const showDragScreen = () => {
+    if (!dragScreen.matches(':popover-open')) {
+      dragScreen.showPopover();
+    }
+  };
+  const hideDragScreen = () => {
+    if (dragScreen.matches(':popover-open')) {
+      dragScreen.hidePopover();
+    }
+  };
 
   const mousemoveHandler = (e: MouseEvent) => {
     const { startX, scrollableX, x, startY, scrollableY, y } = state;
@@ -69,46 +74,14 @@ const run = () => {
     const top = startY + (scrollableY ? y - e.screenY : 0);
 
     if (state.target instanceof Window || state.target instanceof Element) {
-      state.target?.scroll({
-        top,
-        left,
-      });
+      state.target.scroll({ top, left });
     }
   };
 
   const mouseupHandler = () => {
     state.pressMouse = false;
-    dragScreen.remove();
+    hideDragScreen();
     window.removeEventListener('mousemove', mousemoveHandler);
-  };
-
-  const visibleOrHidden = /visible|hidden/;
-  const diff = 3;
-  const isScrollableHorizon = ({
-    target,
-    overflowX,
-  }: {
-    target: HTMLElement;
-    overflowX: string;
-  }) => {
-    return (
-      target.clientWidth !== target.scrollWidth &&
-      diff < Math.abs(target.clientWidth - target.scrollWidth) &&
-      !visibleOrHidden.test(overflowX)
-    );
-  };
-  const isScrollableVertical = ({
-    target,
-    overflowY,
-  }: {
-    target: HTMLElement;
-    overflowY: string;
-  }) => {
-    return (
-      target.clientHeight !== target.scrollHeight &&
-      diff < Math.abs(target.clientHeight - target.scrollHeight) &&
-      !visibleOrHidden.test(overflowY)
-    );
   };
 
   const resolveTarget = (
@@ -119,10 +92,8 @@ const run = () => {
     scrollableY: boolean;
   } => {
     if (eventTarget instanceof HTMLElement) {
-      let target: Window | HTMLElement = eventTarget;
-      let scrollableX = false;
-      let scrollableY = false;
-      const checkedNodes = [];
+      const checkedNodes: HTMLElement[] = [];
+      let target: HTMLElement | null = eventTarget;
 
       while (target) {
         checkedNodes.push(target);
@@ -134,20 +105,13 @@ const run = () => {
 
         const { overflowX, overflowY } = getComputedStyle(target);
 
-        // 空要素などのスクロールの余地がないノードを無視するための
-        // 子要素を確認する。
-        // なお、textarea要素はスペースキーが使えない
         if (target.firstChild) {
-          scrollableX = isScrollableHorizon({ target, overflowX });
-          scrollableY = isScrollableVertical({ target, overflowY });
+          const scrollableX = isScrollableHorizon({ target, overflowX });
+          const scrollableY = isScrollableVertical({ target, overflowY });
 
           if (scrollableX || scrollableY) {
             return { target, scrollableX, scrollableY };
           }
-        }
-
-        if (!target.parentElement) {
-          break;
         }
 
         target = target.parentElement;
@@ -166,30 +130,27 @@ const run = () => {
       return;
     }
 
-    if (state.pressSpace) {
-      const { target, scrollableX, scrollableY } = resolveTarget(e.target);
+    const { target, scrollableX, scrollableY } = resolveTarget(e.target);
 
-      e.preventDefault();
-      state.target = target;
-      state.x = e.screenX;
-      state.y = e.screenY;
-      state.scrollableX = scrollableX;
-      state.scrollableY = scrollableY;
-      state.pressMouse = true;
+    e.preventDefault();
+    state.target = target;
+    state.x = e.screenX;
+    state.y = e.screenY;
+    state.scrollableX = scrollableX;
+    state.scrollableY = scrollableY;
+    state.pressMouse = true;
+    state.didDrag = true;
 
-      if (target === window) {
-        state.startX = window.pageXOffset;
-        state.startY = window.pageYOffset;
-      } else if (target instanceof HTMLElement) {
-        state.startX = target.scrollLeft;
-        state.startY = target.scrollTop;
-      }
-
-      document.body.append(dragScreen);
-      window.addEventListener('mousemove', mousemoveHandler, {
-        passive: true,
-      });
+    if (target === window) {
+      state.startX = window.scrollX;
+      state.startY = window.scrollY;
+    } else if (target instanceof HTMLElement) {
+      state.startX = target.scrollLeft;
+      state.startY = target.scrollTop;
     }
+
+    showDragScreen();
+    window.addEventListener('mousemove', mousemoveHandler, { passive: true });
   };
 
   const targetIsEditableElement = (target: EventTarget | null) => {
@@ -208,13 +169,16 @@ const run = () => {
 
     return isEditableElement || isFormControls;
   };
+
   const resolvePressedKey = (key: string) => {
     const pressedKey = key.toLowerCase();
     return (
       pressedKey === state.customKeyPattern.toLowerCase() || (state.isUseOnlySpace && key === ' ')
     );
   };
+
   const isPressedMetaKeyOrCtrlKey = (e: KeyboardEvent) => e.ctrlKey || e.metaKey;
+
   const keydownHandler = (e: KeyboardEvent) => {
     const isPressedTheKey = resolvePressedKey(e.key);
 
@@ -224,13 +188,9 @@ const run = () => {
 
     if (state.isUseOnlySpace) {
       if (isPressedMetaKeyOrCtrlKey(e)) {
-        e.preventDefault();
-
-        scrollBy({
-          top: window.innerHeight * 0.85 * (e.shiftKey ? -1 : 1),
-          behavior: 'smooth',
-        });
-
+        // Cmd+Space は Spotlight、Ctrl+Space は IME/入力ソース切り替えと衝突する
+        // ため、修飾キー付きの動作は提供しない。ドラッグせず Space を離したときに
+        // keyup 側でページスクロールを実行する。
         return;
       }
     } else {
@@ -238,15 +198,6 @@ const run = () => {
       const isValidShift = e.shiftKey ? state.shiftKey : !state.shiftKey;
 
       if (!isValidCtrl || !isValidShift) {
-        // console.log('block');
-        // console.log({
-        //   pressedKey,
-        //   customKey: state.customKeyPattern,
-        //   isPressedTheKey,
-        //   isValidCtrl,
-        //   isValidShift,
-        // });
-
         return;
       }
     }
@@ -262,15 +213,19 @@ const run = () => {
 
     e.preventDefault();
     state.pressSpace = true;
+    state.didDrag = false;
+    state.spacePressedAt = performance.now();
     document.head.append(styleElement);
-    document.body.append(dragScreen);
+    showDragScreen();
     window.addEventListener('mousedown', mousedownHandler);
   };
 
   const resetState = () => {
     state.pressSpace = false;
     state.pressMouse = false;
-    dragScreen.remove();
+    state.didDrag = false;
+    state.spacePressedAt = 0;
+    hideDragScreen();
     styleElement.remove();
     window.removeEventListener('mousedown', mousedownHandler);
     window.removeEventListener('mousemove', mousemoveHandler);
@@ -280,23 +235,38 @@ const run = () => {
     const isPressedTheKey = resolvePressedKey(e.key);
 
     if (isPressedTheKey) {
+      // Space をドラッグせず、かつタップ相当（TAP_RELEASE_THRESHOLD_MS 以内で
+      // 離した）ときのみ、ブラウザの Space=PageDown 相当を復元する。長押しは
+      // ドラッグ待ちとみなしスクロールしない。
+      const heldMs = performance.now() - state.spacePressedAt;
+      const shouldTapScroll =
+        state.isUseOnlySpace &&
+        state.pressSpace &&
+        !state.pressMouse &&
+        !state.didDrag &&
+        heldMs <= TAP_RELEASE_THRESHOLD_MS;
       state.pressSpace = false;
 
-      // スペースキーが離されたとき、ドラッグが続いていれば初期化はmouseupに任せる
       if (!state.pressMouse) {
         resetState();
-
+        if (shouldTapScroll) {
+          const deltaY = getPageScrollAmount(window.innerHeight) * (e.shiftKey ? -1 : 1);
+          // これ以上その方向にスクロールできない場合は overscroll bounce を
+          // 誘発しないよう発火しない。
+          if (canScrollBy(deltaY)) {
+            smoothScrollBy(deltaY);
+          }
+        }
         return;
       }
     }
 
-    dragScreen.remove();
+    hideDragScreen();
     styleElement.remove();
     window.removeEventListener('mousedown', mousedownHandler);
   };
 
   dragScreen.addEventListener('mouseup', (e) => {
-    // body要素のイベントが発火するのを防ぐ
     e.stopPropagation();
     mouseupHandler();
   });
@@ -308,50 +278,42 @@ const run = () => {
   window.addEventListener('contextmenu', resetState);
 };
 
-const isUseOnlySpaceMigration = () => {
-  type StorageItem = { isUseOnlySpace?: boolean | undefined };
-  chrome.storage.local.get(['isUseOnlySpace'], ({ isUseOnlySpace }: StorageItem) => {
-    const saveData = {
-      isUseOnlySpace: typeof isUseOnlySpace === 'undefined' ? true : isUseOnlySpace,
+const migrateLegacyIsUseOnlySpace = () => {
+  type LegacyStorageItem = { isUseOnlySpace?: boolean };
+  chrome.storage.local.get(['isUseOnlySpace'], ({ isUseOnlySpace }: LegacyStorageItem) => {
+    const saveData: SaveDataType = {
+      ...defaultSaveData,
+      isUseOnlySpace: typeof isUseOnlySpace === 'boolean' ? isUseOnlySpace : true,
       customKeyPattern: ' ',
-      shiftKey: true,
-      ctrlKey: true,
-    } as SaveDataType;
-
-    chrome.storage.local.remove('isUseOnlySpace');
-    chrome.storage.local.set({
-      saveData,
-    });
+    };
+    void chrome.storage.local.remove('isUseOnlySpace');
+    void chrome.storage.local.set({ saveData });
   });
 };
 
+const applyState = (raw: unknown) => {
+  const parsed = parseSaveData(raw);
+  state.isUseOnlySpace = parsed.isUseOnlySpace;
+  state.customKeyPattern = parsed.customKeyPattern;
+  state.ctrlKey = parsed.ctrlKey;
+  state.shiftKey = parsed.shiftKey;
+};
+
 chrome.storage.local.get(['saveData'], ({ saveData }) => {
-  if (typeof saveData !== 'object') {
-    isUseOnlySpaceMigration();
+  if (typeof saveData !== 'object' || saveData === null) {
+    migrateLegacyIsUseOnlySpace();
   }
 
-  const resolveState = (saveData: SaveDataType | undefined) => {
-    if (typeof saveData === 'undefined') {
-      state.isUseOnlySpace = true; // default
-      return;
-    }
-
-    state.isUseOnlySpace = saveData.isUseOnlySpace ?? true;
-    state.customKeyPattern = saveData.customKeyPattern ?? '';
-    state.ctrlKey = saveData.ctrlKey ?? true;
-    state.shiftKey = saveData.shiftKey ?? true;
-  };
-
   window.addEventListener('focus', () => {
-    chrome.storage.local.get(['saveData'], ({ saveData }: { saveData?: SaveDataType }) => {
-      resolveState(saveData);
+    chrome.storage.local.get(['saveData'], (items) => {
+      applyState(items['saveData']);
     });
   });
 
-  chrome.runtime.onMessage.addListener((saveData: SaveDataType) => {
-    resolveState(saveData);
+  chrome.runtime.onMessage.addListener((message: unknown) => {
+    applyState(message);
   });
 
-  resolveState(saveData);
+  applyState(saveData);
   run();
 });
