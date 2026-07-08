@@ -8,7 +8,7 @@ import globals from 'globals';
 const tsconfigRootDir = dirname(fileURLToPath(import.meta.url));
 
 export default [
-  { ignores: ['package/**', 'eslint.config.mjs', 'vitest.config.ts'] },
+  { ignores: ['package/**', 'eslint.config.mjs', 'esbuild.config.mjs', 'vitest.config.ts'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {

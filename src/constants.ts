@@ -14,6 +14,8 @@ export const defaultSaveData: SaveDataType = {
 
 export const SAVE_DATA_KEYS = Object.keys(defaultSaveData) as (keyof SaveDataType)[];
 
+export const INJECTED_MARKER_KEY = '__heppokofrontend.hand-tool.injected__';
+
 // Space をこの時間以内で離した場合のみ tap-release スクロールを発火する。
 // 300ms を超える長押しは「ドラッグ準備で待った」扱いとみなしスクロールしない。
 export const TAP_RELEASE_THRESHOLD_MS = 300;
