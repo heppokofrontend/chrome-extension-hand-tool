@@ -1,4 +1,9 @@
-import { type SaveDataType, defaultSaveData, TAP_RELEASE_THRESHOLD_MS } from './constants';
+import {
+  type SaveDataType,
+  defaultSaveData,
+  INJECTED_MARKER_KEY,
+  TAP_RELEASE_THRESHOLD_MS,
+} from './constants';
 import { parseSaveData } from './utils/save-data';
 import {
   canScrollBy,
@@ -299,21 +304,27 @@ const applyState = (raw: unknown) => {
   state.shiftKey = parsed.shiftKey;
 };
 
-chrome.storage.local.get(['saveData'], ({ saveData }) => {
-  if (typeof saveData !== 'object' || saveData === null) {
-    migrateLegacyIsUseOnlySpace();
-  }
+const markedWindow = window as typeof window & { [INJECTED_MARKER_KEY]?: boolean };
 
-  window.addEventListener('focus', () => {
-    chrome.storage.local.get(['saveData'], (items) => {
-      applyState(items['saveData']);
+if (markedWindow[INJECTED_MARKER_KEY] !== true) {
+  markedWindow[INJECTED_MARKER_KEY] = true;
+
+  chrome.storage.local.get(['saveData'], ({ saveData }) => {
+    if (typeof saveData !== 'object' || saveData === null) {
+      migrateLegacyIsUseOnlySpace();
+    }
+
+    window.addEventListener('focus', () => {
+      chrome.storage.local.get(['saveData'], (items) => {
+        applyState(items['saveData']);
+      });
     });
-  });
 
-  chrome.runtime.onMessage.addListener((message: unknown) => {
-    applyState(message);
-  });
+    chrome.runtime.onMessage.addListener((message: unknown) => {
+      applyState(message);
+    });
 
-  applyState(saveData);
-  run();
-});
+    applyState(saveData);
+    run();
+  });
+}

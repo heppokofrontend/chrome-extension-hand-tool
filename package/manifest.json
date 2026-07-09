@@ -1,12 +1,15 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "__MSG_extDesc__",
   "minimum_chrome_version": "120",
   "action": {
     "default_icon": "icon.png",
     "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "worker.js"
   },
   "content_scripts": [
     {
@@ -14,7 +17,8 @@
       "js": ["content-scripts.js"]
     }
   ],
-  "permissions": ["storage"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "permissions": ["storage", "scripting"],
   "icons": {
     "128": "icon.png"
   },
