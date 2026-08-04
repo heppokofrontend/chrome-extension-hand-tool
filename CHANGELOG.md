@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## v1.3.2
+
+- Fix: The Space-tap page scroll could look janky on some sites. Scrolling is now smooth everywhere.
+
 ## v1.3.1
 
 - Improve: The extension now injects itself into already-open tabs automatically on install, update, or re-enable, so you no longer need to restart your browser after installing.
