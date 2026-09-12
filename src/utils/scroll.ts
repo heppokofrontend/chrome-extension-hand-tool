@@ -66,7 +66,7 @@ export const smoothScrollBy = (deltaY: number): void => {
   }
 
   if (prefersReducedMotion()) {
-    scrollBy(0, deltaY);
+    scrollBy({ left: 0, top: deltaY, behavior: 'instant' });
     return;
   }
 
@@ -79,7 +79,9 @@ export const smoothScrollBy = (deltaY: number): void => {
     const elapsed = now - startTime;
     const progress = Math.min(1, elapsed / duration);
     const eased = easeOutCubic(progress);
-    scrollTo(startX, startY + deltaY * eased);
+    // 自前でイージング済みのため、ページ側の scroll-behavior: smooth による
+    // 二重アニメーションを避けて毎フレーム instant で反映する。
+    scrollTo({ left: startX, top: startY + deltaY * eased, behavior: 'instant' });
     if (progress < 1) {
       activeScrollAnimationId = requestAnimationFrame(step);
     } else {
